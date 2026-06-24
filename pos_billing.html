@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>POS Billing — Drive Sync</title>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --card: #22263a;
+    --border: #2e3350;
+    --accent: #f59e0b;
+    --accent2: #3b82f6;
+    --green: #10b981;
+    --red: #ef4444;
+    --text: #e8eaf2;
+    --muted: #8b90a8;
+    --radius: 12px;
+    --font: 'Segoe UI', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  /* ── TOP BAR ── */
+  #topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 20px; background: var(--surface); border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 100;
+  }
+  #topbar h1 { font-size: 18px; font-weight: 700; color: var(--accent); letter-spacing: .5px; }
+  #topbar .meta { font-size: 12px; color: var(--muted); }
+  #sync-btn {
+    background: var(--accent2); color: #fff; border: none; border-radius: 8px;
+    padding: 6px 14px; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 6px;
+  }
+  #sync-btn:disabled { opacity: .5; cursor: default; }
+  #auth-btn {
+    background: var(--accent); color: #000; border: none; border-radius: 8px;
+    padding: 6px 14px; font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  #drive-status { font-size: 11px; color: var(--muted); }
+
+  /* ── LAYOUT ── */
+  #app { display: flex; height: calc(100vh - 54px); }
+  #left { flex: 1; overflow-y: auto; padding: 16px; }
+  #right { width: 360px; background: var(--surface); border-left: 1px solid var(--border);
+    display: flex; flex-direction: column; }
+
+  /* ── TABS ── */
+  #tabs { display: flex; gap: 4px; margin-bottom: 14px; }
+  .tab {
+    padding: 6px 16px; border-radius: 20px; font-size: 13px; cursor: pointer;
+    background: var(--card); color: var(--muted); border: 1px solid var(--border);
+    transition: all .15s;
+  }
+  .tab.active { background: var(--accent); color: #000; font-weight: 600; border-color: var(--accent); }
+
+  /* ── SEARCH ── */
+  #search-box {
+    width: 100%; background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); color: var(--text); padding: 10px 14px;
+    font-size: 14px; margin-bottom: 14px; outline: none;
+  }
+  #search-box:focus { border-color: var(--accent); }
+
+  /* ── PRODUCT GRID ── */
+  #product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+  .prod-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 14px 10px; text-align: center; cursor: pointer;
+    transition: transform .1s, border-color .15s;
+    user-select: none;
+  }
+  .prod-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .prod-card:active { transform: scale(.97); }
+  .prod-icon { font-size: 36px; margin-bottom: 8px; display: block; }
+  .prod-name { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+  .prod-price { font-size: 12px; color: var(--accent); font-weight: 700; }
+  .prod-stock { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  /* ── CART (right panel) ── */
+  #cart-header { padding: 14px 16px; border-bottom: 1px solid var(--border); }
+  #cart-header h2 { font-size: 15px; font-weight: 700; }
+  #customer-row { display: flex; gap: 8px; margin-top: 10px; }
+  .cust-input {
+    flex: 1; background: var(--card); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text); padding: 7px 10px; font-size: 13px; outline: none;
+  }
+  .cust-input:focus { border-color: var(--accent2); }
+
+  #cart-items { flex: 1; overflow-y: auto; padding: 10px 14px; }
+  .cart-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 0; border-bottom: 1px solid var(--border);
+  }
+  .ci-icon { font-size: 22px; }
+  .ci-info { flex: 1; }
+  .ci-name { font-size: 13px; font-weight: 600; }
+  .ci-price { font-size: 12px; color: var(--muted); }
+  .ci-qty { display: flex; align-items: center; gap: 6px; }
+  .qty-btn {
+    width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--border);
+    background: var(--card); color: var(--text); cursor: pointer; font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .qty-btn:hover { background: var(--accent); color: #000; border-color: var(--accent); }
+  .qty-num { font-size: 14px; font-weight: 700; min-width: 20px; text-align: center; }
+  .ci-total { font-size: 13px; font-weight: 700; color: var(--accent); white-space: nowrap; }
+  .ci-del { background: none; border: none; color: var(--red); cursor: pointer; font-size: 16px; }
+
+  #cart-footer { padding: 14px 16px; border-top: 1px solid var(--border); }
+  .sum-row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; color: var(--muted); }
+  .sum-row.total { font-size: 16px; font-weight: 700; color: var(--text); margin-top: 8px; }
+  .sum-row.total span:last-child { color: var(--accent); }
+  #discount-row { display: flex; gap: 8px; margin: 10px 0; }
+  #disc-input {
+    width: 80px; background: var(--card); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text); padding: 7px 10px; font-size: 13px; outline: none;
+  }
+  .disc-type { background: var(--card); border: 1px solid var(--border); color: var(--text);
+    border-radius: 8px; padding: 7px 10px; font-size: 13px; cursor: pointer; }
+  #bill-btn {
+    width: 100%; padding: 13px; background: var(--green); color: #fff; border: none;
+    border-radius: var(--radius); font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 10px;
+    letter-spacing: .5px;
+  }
+  #bill-btn:hover { background: #059669; }
+  #clear-btn {
+    width: 100%; padding: 9px; background: transparent; color: var(--muted); border: 1px solid var(--border);
+    border-radius: var(--radius); font-size: 13px; cursor: pointer; margin-top: 6px;
+  }
+  #clear-btn:hover { color: var(--red); border-color: var(--red); }
+
+  /* ── PRODUCTS MANAGER ── */
+  #prod-manager { display: none; }
+  #prod-manager.visible { display: block; }
+  .mgr-form {
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 16px; margin-bottom: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+  }
+  .mgr-form h3 { grid-column: 1/-1; font-size: 14px; color: var(--muted); }
+  .inp {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); padding: 9px 12px; font-size: 13px; outline: none;
+  }
+  .inp:focus { border-color: var(--accent); }
+  .inp.full { grid-column: 1/-1; }
+  .add-btn {
+    grid-column: 1/-1; padding: 10px; background: var(--accent); color: #000;
+    border: none; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 14px;
+  }
+  .prod-list-item {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px 14px; margin-bottom: 8px;
+  }
+  .pli-icon { font-size: 26px; }
+  .pli-info { flex: 1; }
+  .pli-name { font-size: 14px; font-weight: 600; }
+  .pli-meta { font-size: 12px; color: var(--muted); }
+  .pli-del { background: none; border: none; color: var(--red); cursor: pointer; font-size: 18px; }
+
+  /* ── BILLS HISTORY ── */
+  #bills-section { display: none; }
+  #bills-section.visible { display: block; }
+  .bill-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 14px; margin-bottom: 10px; cursor: pointer;
+  }
+  .bill-card:hover { border-color: var(--accent2); }
+  .bill-head { display: flex; justify-content: space-between; margin-bottom: 6px; }
+  .bill-no { font-size: 13px; font-weight: 700; }
+  .bill-date { font-size: 12px; color: var(--muted); }
+  .bill-cust { font-size: 12px; color: var(--muted); }
+  .bill-amt { font-size: 16px; font-weight: 700; color: var(--accent); }
+  .bill-items-preview { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+  /* ── MODAL (print receipt) ── */
+  #modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7);
+    z-index: 200; align-items: center; justify-content: center;
+  }
+  #modal-overlay.open { display: flex; }
+  #modal {
+    background: #fff; color: #111; border-radius: 12px; padding: 30px 24px;
+    width: 340px; max-height: 90vh; overflow-y: auto;
+  }
+  #modal h2 { text-align: center; font-size: 18px; margin-bottom: 4px; }
+  #modal .shop-sub { text-align: center; font-size: 12px; color: #666; margin-bottom: 16px; }
+  .rcpt-divider { border: none; border-top: 1px dashed #ccc; margin: 10px 0; }
+  .rcpt-row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 5px; }
+  .rcpt-row.bold { font-weight: 700; font-size: 15px; }
+  .rcpt-items { margin: 10px 0; }
+  .rcpt-item { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; }
+  .rcpt-footer { text-align: center; margin-top: 14px; font-size: 12px; color: #888; }
+  #modal-btns { display: flex; gap: 10px; margin-top: 16px; }
+  #modal-btns button {
+    flex: 1; padding: 10px; border: none; border-radius: 8px;
+    font-weight: 700; cursor: pointer; font-size: 14px;
+  }
+  #print-btn { background: #111; color: #fff; }
+  #close-btn { background: #eee; color: #333; }
+
+  /* ── ICON PICKER ── */
+  #icon-picker-wrap { position: relative; }
+  #icon-display {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    padding: 9px 12px; font-size: 22px; cursor: pointer; min-width: 54px; text-align: center;
+  }
+  #icon-grid {
+    display: none; position: absolute; top: 44px; left: 0;
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px; z-index: 50; display: grid; grid-template-columns: repeat(8,1fr); gap: 4px;
+    width: 280px; max-height: 200px; overflow-y: auto;
+  }
+  #icon-grid.hidden { display: none; }
+  .icon-opt { font-size: 22px; cursor: pointer; padding: 4px; border-radius: 6px; text-align: center; }
+  .icon-opt:hover { background: var(--border); }
+
+  /* ── TOAST ── */
+  #toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: var(--surface); border: 1px solid var(--border); border-radius: 20px;
+    padding: 10px 20px; font-size: 13px; z-index: 300;
+    opacity: 0; transition: opacity .3s; pointer-events: none;
+  }
+  #toast.show { opacity: 1; }
+
+  @media print {
+    body > *:not(#modal-overlay) { display: none !important; }
+    #modal-overlay { position: static !important; background: none !important; }
+    #modal { box-shadow: none; }
+    #modal-btns { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div id="topbar">
+  <div>
+    <h1>🛒 POS Billing</h1>
+    <div class="meta" id="drive-status">Not connected to Google Drive</div>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;">
+    <button id="sync-btn" onclick="syncDrive()" disabled>☁ Sync Drive</button>
+    <button id="auth-btn" onclick="signIn()">Connect Drive</button>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app">
+  <!-- LEFT: Products + Manager + Bills -->
+  <div id="left">
+    <div id="tabs">
+      <div class="tab active" onclick="switchTab('pos')">🛒 POS</div>
+      <div class="tab" onclick="switchTab('products')">📦 Products</div>
+      <div class="tab" onclick="switchTab('bills')">🧾 Bills</div>
+    </div>
+
+    <!-- POS TAB -->
+    <div id="pos-section">
+      <input id="search-box" class="inp" type="text" placeholder="🔍 Search products…" oninput="renderGrid()">
+      <div id="product-grid"></div>
+    </div>
+
+    <!-- PRODUCTS TAB -->
+    <div id="prod-manager">
+      <div class="mgr-form">
+        <h3>Add / Edit Product</h3>
+        <div id="icon-picker-wrap">
+          <div id="icon-display" onclick="toggleIconGrid()">🛍️</div>
+          <div id="icon-grid" class="hidden"></div>
+        </div>
+        <input class="inp" id="p-name" placeholder="Product name" type="text">
+        <input class="inp" id="p-price" placeholder="Price (₹)" type="number" min="0">
+        <input class="inp" id="p-stock" placeholder="Stock qty (0=unlimited)" type="number" min="0">
+        <input class="inp" id="p-unit" placeholder="Unit (kg/pcs/ltr…)">
+        <input class="inp" id="p-cat" placeholder="Category">
+        <input class="inp full" id="p-id" type="hidden">
+        <button class="add-btn" onclick="saveProduct()">✅ Save Product</button>
+      </div>
+      <div id="prod-list"></div>
+    </div>
+
+    <!-- BILLS TAB -->
+    <div id="bills-section">
+      <div id="bills-list"></div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Cart -->
+  <div id="right">
+    <div id="cart-header">
+      <h2>🧾 Current Bill</h2>
+      <div id="customer-row">
+        <input class="cust-input" id="cust-name" placeholder="Customer name" type="text">
+        <input class="cust-input" id="cust-phone" placeholder="Phone" type="tel" style="width:110px;flex:none">
+      </div>
+    </div>
+    <div id="cart-items"></div>
+    <div id="cart-footer">
+      <div class="sum-row"><span>Subtotal</span><span id="subtotal">₹0.00</span></div>
+      <div id="discount-row">
+        <input class="inp" id="disc-input" placeholder="Disc" type="number" min="0" oninput="calcTotal()">
+        <select class="disc-type" id="disc-type" onchange="calcTotal()">
+          <option value="flat">₹ Flat</option>
+          <option value="pct">% Off</option>
+        </select>
+      </div>
+      <div class="sum-row"><span>Discount</span><span id="discount-val">₹0.00</span></div>
+      <div class="sum-row total"><span>TOTAL</span><span id="grand-total">₹0.00</span></div>
+      <div id="payment-row" style="margin:10px 0;display:flex;gap:8px;">
+        <select class="disc-type" id="pay-mode" style="flex:1">
+          <option>Cash</option><option>UPI</option><option>Card</option><option>Credit</option>
+        </select>
+        <input class="inp" id="cash-given" placeholder="Cash given" type="number" min="0" oninput="calcChange()" style="flex:1">
+      </div>
+      <div class="sum-row" id="change-row" style="display:none"><span>Change</span><span id="change-val">₹0.00</span></div>
+      <button id="bill-btn" onclick="generateBill()">🖨 Generate Bill</button>
+      <button id="clear-btn" onclick="clearCart()">✖ Clear Cart</button>
+    </div>
+  </div>
+</div>
+
+<!-- RECEIPT MODAL -->
+<div id="modal-overlay">
+  <div id="modal">
+    <h2 id="rcpt-shop">My Shop</h2>
+    <div class="shop-sub" id="rcpt-sub">POS Billing System</div>
+    <hr class="rcpt-divider">
+    <div id="rcpt-meta"></div>
+    <hr class="rcpt-divider">
+    <div class="rcpt-items" id="rcpt-items"></div>
+    <hr class="rcpt-divider">
+    <div id="rcpt-totals"></div>
+    <div class="rcpt-footer">Thank you for your purchase!<br>Please visit again 🙏</div>
+    <div id="modal-btns">
+      <button id="print-btn" onclick="window.print()">🖨 Print</button>
+      <button id="close-btn" onclick="closeModal()">✖ Close</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════
+let state = {
+  products: [],
+  bills: [],
+  settings: { shopName: 'My Shop', shopSub: 'Virudhunagar', billCounter: 1 }
+};
+let cart = [];
+let selectedIcon = '🛍️';
+let driveFileId = null;
+let accessToken = null;
+const DRIVE_FILE_NAME = 'pos_billing_data.json';
+
+// ═══════════════════════════════════════════
+// ICONS
+// ═══════════════════════════════════════════
+const ICONS = [
+  '🛍️','🍵','☕','🧉','🥤','🍶','🧃','🍺','🍻','🥛',
+  '🍞','🧁','🎂','🍰','🍩','🍪','🍫','🍬','🍭','🍮',
+  '🍎','🍊','🍋','🍇','🍓','🥝','🍌','🍉','🫐','🥭',
+  '🥦','🧅','🥔','🍅','🌽','🥕','🫚','🧈','🥚','🧀',
+  '🍗','🥩','🍖','🌮','🍕','🍔','🍟','🥪','🥗','🍜',
+  '📦','🛒','🧺','🪣','🧴','🧼','🪥','🧹','🪣','🗑️',
+  '💊','🩺','🧪','🔬','💉','🩹','🩻','🌡️','🧬','🏥',
+  '👕','👗','👠','👟','🧢','🎒','💍','⌚','🕶️','👜',
+  '📱','💻','🖨️','📺','📷','🔋','💡','🔌','📡','🖥️',
+  '🌿','🌾','🌸','🌺','🪴','🌴','🍀','🌻','🌹','🍃',
+  '🪔','🕯️','🪆','🧸','🎁','🎀','🎊','🎉','🎈','🏆'
+];
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+function init() {
+  buildIconGrid();
+  addSampleProducts();
+  renderGrid();
+  renderCart();
+  renderProdList();
+  renderBills();
+}
+
+function addSampleProducts() {
+  if (state.products.length > 0) return;
+  const samples = [
+    { id: uid(), name: 'Tea', price: 10, icon: '🍵', unit: 'cup', stock: 0, cat: 'Beverages' },
+    { id: uid(), name: 'Coffee', price: 15, icon: '☕', unit: 'cup', stock: 0, cat: 'Beverages' },
+    { id: uid(), name: 'Milk Packet', price: 28, icon: '🥛', unit: 'pkt', stock: 50, cat: 'Dairy' },
+    { id: uid(), name: 'Biscuits', price: 20, icon: '🍪', unit: 'pkt', stock: 30, cat: 'Snacks' },
+    { id: uid(), name: 'Water Bottle', price: 20, icon: '💧', unit: 'btl', stock: 0, cat: 'Beverages' },
+    { id: uid(), name: 'Bread', price: 35, icon: '🍞', unit: 'pkt', stock: 20, cat: 'Bakery' },
+  ];
+  state.products = samples;
+}
+
+// ═══════════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════════
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    t.classList.toggle('active', ['pos','products','bills'][i] === tab);
+  });
+  document.getElementById('pos-section').style.display = tab === 'pos' ? '' : 'none';
+  document.getElementById('prod-manager').classList.toggle('visible', tab === 'products');
+  document.getElementById('bills-section').classList.toggle('visible', tab === 'bills');
+  if (tab === 'bills') renderBills();
+}
+
+// ═══════════════════════════════════════════
+// PRODUCT GRID
+// ═══════════════════════════════════════════
+function renderGrid() {
+  const q = document.getElementById('search-box').value.toLowerCase();
+  const grid = document.getElementById('product-grid');
+  const filtered = state.products.filter(p =>
+    p.name.toLowerCase().includes(q) || (p.cat||'').toLowerCase().includes(q)
+  );
+  grid.innerHTML = filtered.length ? filtered.map(p => `
+    <div class="prod-card" onclick="addToCart('${p.id}')">
+      <span class="prod-icon">${p.icon}</span>
+      <div class="prod-name">${p.name}</div>
+      <div class="prod-price">₹${p.price.toFixed(2)}</div>
+      <div class="prod-stock">${p.stock > 0 ? p.stock + ' ' + (p.unit||'') : p.unit || ''}</div>
+    </div>
+  `).join('') : '<div style="color:var(--muted);padding:20px">No products found.</div>';
+}
+
+// ═══════════════════════════════════════════
+// CART
+// ═══════════════════════════════════════════
+function addToCart(pid) {
+  const p = state.products.find(x => x.id === pid);
+  if (!p) return;
+  const existing = cart.find(x => x.id === pid);
+  if (existing) existing.qty++;
+  else cart.push({ ...p, qty: 1 });
+  renderCart();
+  toast(`➕ ${p.icon} ${p.name}`);
+}
+
+function changeQty(id, delta) {
+  const item = cart.find(x => x.id === id);
+  if (!item) return;
+  item.qty += delta;
+  if (item.qty <= 0) cart = cart.filter(x => x.id !== id);
+  renderCart();
+}
+
+function removeFromCart(id) {
+  cart = cart.filter(x => x.id !== id);
+  renderCart();
+}
+
+function clearCart() {
+  cart = [];
+  document.getElementById('cust-name').value = '';
+  document.getElementById('cust-phone').value = '';
+  document.getElementById('disc-input').value = '';
+  document.getElementById('cash-given').value = '';
+  document.getElementById('change-row').style.display = 'none';
+  renderCart();
+}
+
+function renderCart() {
+  const el = document.getElementById('cart-items');
+  if (!cart.length) {
+    el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted)">Tap a product to add it</div>';
+  } else {
+    el.innerHTML = cart.map(item => `
+      <div class="cart-item">
+        <span class="ci-icon">${item.icon}</span>
+        <div class="ci-info">
+          <div class="ci-name">${item.name}</div>
+          <div class="ci-price">₹${item.price.toFixed(2)} × ${item.qty}</div>
+        </div>
+        <div class="ci-qty">
+          <button class="qty-btn" onclick="changeQty('${item.id}',-1)">−</button>
+          <span class="qty-num">${item.qty}</span>
+          <button class="qty-btn" onclick="changeQty('${item.id}',1)">+</button>
+        </div>
+        <span class="ci-total">₹${(item.price * item.qty).toFixed(2)}</span>
+        <button class="ci-del" onclick="removeFromCart('${item.id}')">🗑</button>
+      </div>
+    `).join('');
+  }
+  calcTotal();
+}
+
+function calcTotal() {
+  const sub = cart.reduce((s, x) => s + x.price * x.qty, 0);
+  const disc = parseFloat(document.getElementById('disc-input').value) || 0;
+  const dtype = document.getElementById('disc-type').value;
+  const discAmt = dtype === 'pct' ? sub * disc / 100 : disc;
+  const total = Math.max(0, sub - discAmt);
+  document.getElementById('subtotal').textContent = '₹' + sub.toFixed(2);
+  document.getElementById('discount-val').textContent = '₹' + discAmt.toFixed(2);
+  document.getElementById('grand-total').textContent = '₹' + total.toFixed(2);
+  calcChange();
+}
+
+function calcChange() {
+  const total = parseFloat(document.getElementById('grand-total').textContent.replace('₹','')) || 0;
+  const given = parseFloat(document.getElementById('cash-given').value) || 0;
+  const row = document.getElementById('change-row');
+  if (given > 0) {
+    row.style.display = 'flex';
+    document.getElementById('change-val').textContent = '₹' + Math.max(0, given - total).toFixed(2);
+  } else row.style.display = 'none';
+}
+
+// ═══════════════════════════════════════════
+// BILL GENERATION
+// ═══════════════════════════════════════════
+function generateBill() {
+  if (!cart.length) { toast('⚠️ Cart is empty'); return; }
+  const sub = cart.reduce((s, x) => s + x.price * x.qty, 0);
+  const disc = parseFloat(document.getElementById('disc-input').value) || 0;
+  const dtype = document.getElementById('disc-type').value;
+  const discAmt = dtype === 'pct' ? sub * disc / 100 : disc;
+  const total = Math.max(0, sub - discAmt);
+  const bill = {
+    id: uid(),
+    billNo: 'INV-' + String(state.settings.billCounter).padStart(4,'0'),
+    date: new Date().toLocaleString('en-IN'),
+    customer: document.getElementById('cust-name').value || 'Walk-in',
+    phone: document.getElementById('cust-phone').value || '',
+    items: cart.map(x => ({ ...x })),
+    subtotal: sub, discAmt, total,
+    payMode: document.getElementById('pay-mode').value
+  };
+  state.settings.billCounter++;
+  state.bills.unshift(bill);
+  showReceipt(bill);
+  if (accessToken) syncDrive();
+}
+
+function showReceipt(bill) {
+  document.getElementById('rcpt-shop').textContent = state.settings.shopName;
+  document.getElementById('rcpt-sub').textContent = state.settings.shopSub;
+  document.getElementById('rcpt-meta').innerHTML = `
+    <div class="rcpt-row"><span>Bill No</span><span>${bill.billNo}</span></div>
+    <div class="rcpt-row"><span>Date</span><span>${bill.date}</span></div>
+    <div class="rcpt-row"><span>Customer</span><span>${bill.customer}${bill.phone ? ' · ' + bill.phone : ''}</span></div>
+    <div class="rcpt-row"><span>Payment</span><span>${bill.payMode}</span></div>
+  `;
+  document.getElementById('rcpt-items').innerHTML = bill.items.map(i => `
+    <div class="rcpt-item">
+      <span>${i.icon} ${i.name} × ${i.qty}</span>
+      <span>₹${(i.price * i.qty).toFixed(2)}</span>
+    </div>
+  `).join('');
+  document.getElementById('rcpt-totals').innerHTML = `
+    <div class="rcpt-row"><span>Subtotal</span><span>₹${bill.subtotal.toFixed(2)}</span></div>
+    <div class="rcpt-row"><span>Discount</span><span>₹${bill.discAmt.toFixed(2)}</span></div>
+    <div class="rcpt-row bold"><span>TOTAL</span><span>₹${bill.total.toFixed(2)}</span></div>
+  `;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  clearCart();
+}
+
+// ═══════════════════════════════════════════
+// BILLS LIST
+// ═══════════════════════════════════════════
+function renderBills() {
+  const el = document.getElementById('bills-list');
+  if (!state.bills.length) {
+    el.innerHTML = '<div style="color:var(--muted);padding:20px">No bills yet.</div>';
+    return;
+  }
+  el.innerHTML = state.bills.map(b => `
+    <div class="bill-card" onclick='showReceipt(${JSON.stringify(b)})'>
+      <div class="bill-head">
+        <span class="bill-no">${b.billNo}</span>
+        <span class="bill-amt">₹${b.total.toFixed(2)}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;">
+        <span class="bill-cust">👤 ${b.customer}</span>
+        <span class="bill-date">${b.date}</span>
+      </div>
+      <div class="bill-items-preview">${b.items.map(i => i.icon + i.name).join(' · ')}</div>
+    </div>
+  `).join('');
+}
+
+// ═══════════════════════════════════════════
+// PRODUCT MANAGER
+// ═══════════════════════════════════════════
+function saveProduct() {
+  const name = document.getElementById('p-name').value.trim();
+  const price = parseFloat(document.getElementById('p-price').value);
+  if (!name || isNaN(price)) { toast('⚠️ Name and price required'); return; }
+  const existId = document.getElementById('p-id').value;
+  if (existId) {
+    const idx = state.products.findIndex(p => p.id === existId);
+    if (idx >= 0) state.products[idx] = { ...state.products[idx], name, price,
+      icon: selectedIcon,
+      stock: parseInt(document.getElementById('p-stock').value)||0,
+      unit: document.getElementById('p-unit').value.trim(),
+      cat: document.getElementById('p-cat').value.trim()
+    };
+  } else {
+    state.products.push({ id: uid(), name, price, icon: selectedIcon,
+      stock: parseInt(document.getElementById('p-stock').value)||0,
+      unit: document.getElementById('p-unit').value.trim(),
+      cat: document.getElementById('p-cat').value.trim()
+    });
+  }
+  resetProdForm();
+  renderProdList();
+  renderGrid();
+  toast('✅ Product saved');
+  if (accessToken) syncDrive();
+}
+
+function editProduct(id) {
+  const p = state.products.find(x => x.id === id);
+  if (!p) return;
+  selectedIcon = p.icon;
+  document.getElementById('icon-display').textContent = p.icon;
+  document.getElementById('p-name').value = p.name;
+  document.getElementById('p-price').value = p.price;
+  document.getElementById('p-stock').value = p.stock || 0;
+  document.getElementById('p-unit').value = p.unit || '';
+  document.getElementById('p-cat').value = p.cat || '';
+  document.getElementById('p-id').value = p.id;
+  window.scrollTo(0,0);
+}
+
+function deleteProduct(id) {
+  if (!confirm('Delete this product?')) return;
+  state.products = state.products.filter(p => p.id !== id);
+  renderProdList();
+  renderGrid();
+  toast('🗑 Deleted');
+  if (accessToken) syncDrive();
+}
+
+function resetProdForm() {
+  selectedIcon = '🛍️';
+  document.getElementById('icon-display').textContent = '🛍️';
+  document.getElementById('p-name').value = '';
+  document.getElementById('p-price').value = '';
+  document.getElementById('p-stock').value = '';
+  document.getElementById('p-unit').value = '';
+  document.getElementById('p-cat').value = '';
+  document.getElementById('p-id').value = '';
+}
+
+function renderProdList() {
+  const el = document.getElementById('prod-list');
+  el.innerHTML = state.products.map(p => `
+    <div class="prod-list-item">
+      <span class="pli-icon">${p.icon}</span>
+      <div class="pli-info">
+        <div class="pli-name">${p.name}</div>
+        <div class="pli-meta">₹${p.price} · ${p.stock||0} ${p.unit||''} · ${p.cat||''}</div>
+      </div>
+      <button class="qty-btn" onclick="editProduct('${p.id}')" title="Edit">✏️</button>
+      <button class="pli-del" onclick="deleteProduct('${p.id}')">🗑</button>
+    </div>
+  `).join('');
+}
+
+// ═══════════════════════════════════════════
+// ICON PICKER
+// ═══════════════════════════════════════════
+function buildIconGrid() {
+  const grid = document.getElementById('icon-grid');
+  grid.innerHTML = ICONS.map(ic => `<div class="icon-opt" onclick="pickIcon('${ic}')">${ic}</div>`).join('');
+}
+
+function toggleIconGrid() {
+  document.getElementById('icon-grid').classList.toggle('hidden');
+}
+
+function pickIcon(ic) {
+  selectedIcon = ic;
+  document.getElementById('icon-display').textContent = ic;
+  document.getElementById('icon-grid').classList.add('hidden');
+}
+
+// ═══════════════════════════════════════════
+// GOOGLE DRIVE
+// ═══════════════════════════════════════════
+let tokenClient;
+
+function signIn() {
+  if (!tokenClient) {
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: '598818197447-p4aiepu8sgear24hmhv0n6hbgsdarcac.apps.googleusercontent.com',
+      scope: 'https://www.googleapis.com/auth/drive.appdata',
+      callback: async (resp) => {
+        if (resp.error) { toast('❌ Sign-in failed'); return; }
+        accessToken = resp.access_token;
+        document.getElementById('auth-btn').textContent = '✅ Connected';
+        document.getElementById('auth-btn').disabled = true;
+        document.getElementById('sync-btn').disabled = false;
+        document.getElementById('drive-status').textContent = '✅ Google Drive connected';
+        await loadFromDrive();
+      }
+    });
+  }
+  tokenClient.requestAccessToken();
+}
+
+async function loadFromDrive() {
+  try {
+    toast('⏳ Loading from Drive…');
+    const searchRes = await fetch(
+      `https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name='${DRIVE_FILE_NAME}'&fields=files(id,name)`,
+      { headers: { Authorization: 'Bearer ' + accessToken } }
+    );
+    const data = await searchRes.json();
+    if (data.files && data.files.length > 0) {
+      driveFileId = data.files[0].id;
+      const fileRes = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media`,
+        { headers: { Authorization: 'Bearer ' + accessToken } }
+      );
+      const saved = await fileRes.json();
+      if (saved.products) state.products = saved.products;
+      if (saved.bills) state.bills = saved.bills;
+      if (saved.settings) state.settings = { ...state.settings, ...saved.settings };
+      renderGrid(); renderCart(); renderProdList(); renderBills();
+      toast('✅ Data loaded from Drive');
+    } else {
+      await syncDrive();
+    }
+  } catch(e) { toast('❌ Drive load error'); console.error(e); }
+}
+
+async function syncDrive() {
+  if (!accessToken) { toast('⚠️ Connect Google Drive first'); return; }
+  document.getElementById('sync-btn').disabled = true;
+  try {
+    const body = JSON.stringify({ products: state.products, bills: state.bills, settings: state.settings });
+    const blob = new Blob([body], { type: 'application/json' });
+    if (driveFileId) {
+      await fetch(`https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=media`, {
+        method: 'PATCH', headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+        body
+      });
+    } else {
+      const meta = JSON.stringify({ name: DRIVE_FILE_NAME, parents: ['appDataFolder'] });
+      const form = new FormData();
+      form.append('metadata', new Blob([meta], { type: 'application/json' }));
+      form.append('file', blob);
+      const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
+        method: 'POST', headers: { Authorization: 'Bearer ' + accessToken }, body: form
+      });
+      const r = await res.json();
+      driveFileId = r.id;
+    }
+    toast('✅ Synced to Google Drive');
+  } catch(e) { toast('❌ Sync failed'); console.error(e); }
+  document.getElementById('sync-btn').disabled = false;
+}
+
+// ═══════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════
+function uid() { return Math.random().toString(36).slice(2,10); }
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// Close icon grid on outside click
+document.addEventListener('click', e => {
+  if (!document.getElementById('icon-picker-wrap').contains(e.target))
+    document.getElementById('icon-grid').classList.add('hidden');
+});
+
+init();
+</script>
+
+<!-- ══════════════════════════════════════════
+  SETUP INSTRUCTIONS (visible below app on desktop)
+══════════════════════════════════════════ -->
+<div style="background:#0f1117;color:#555;font-size:12px;padding:20px;border-top:1px solid #1e2235;line-height:1.8">
+  <b style="color:#f59e0b">⚙ Google Drive Setup (one-time):</b><br>
+  1. Go to <a href="https://console.cloud.google.com/" target="_blank" style="color:#3b82f6">console.cloud.google.com</a> → Create/select a project<br>
+  2. Enable <b>Google Drive API</b><br>
+  3. OAuth consent screen → External → Add scope: <code>drive.appdata</code><br>
+  4. Credentials → OAuth 2.0 Client ID → Web Application → Add your domain to Authorized JS origins<br>
+  5. Copy the Client ID and replace the placeholder in the script: <code>client_id: 'YOUR_ID.apps.googleusercontent.com'</code><br>
+  6. Data is saved in Drive's hidden <b>appDataFolder</b> (private to your app, not visible in My Drive)
+</div>
+</body>
+</html>
