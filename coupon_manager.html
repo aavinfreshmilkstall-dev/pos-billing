@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="ta">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Aavin Coupon Manager | கூப்பன் நிர்வாகி</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%23145a32%22/><text x=%2250%22 y=%2265%22 font-size=%2255%22 text-anchor=%22middle%22 fill=%22%23f4c542%22>🥛</text></svg>">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%23145a32%22/><text x=%2250%22 y=%2265%22 font-size=%2255%22 text-anchor=%22middle%22 fill=%22%23f4c542%22>🥛</text></svg>">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Aavin Coupon">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+Thambi+2:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+  :root{
+    --green-900:#0e3d24; --green-800:#145a32; --green-700:#1b7a41; --green-600:#22945036;
+    --gold:#f4c542; --gold-dark:#c99a1e;
+    --cream:#fdf8ee; --paper:#fffdf7;
+    --ink:#1c1c1c; --muted:#6b6558;
+    --line:#e6ddc7;
+    --danger:#c0392b; --ok:#1b7a41; --warn:#c99a1e;
+    --radius:14px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  body{margin:0; font-family:'Inter',sans-serif; background:var(--cream); color:var(--ink); padding-bottom:90px;}
+  .tamil{font-family:'Baloo Thambi 2',sans-serif;}
+  header.top{
+    background:linear-gradient(135deg,var(--green-900),var(--green-700));
+    color:#fff; padding:16px 16px 14px; position:sticky; top:0; z-index:50;
+    box-shadow:0 2px 10px rgba(0,0,0,.15);
+  }
+  header.top h1{margin:0; font-size:18px; font-weight:700;}
+  header.top .sub{font-size:12px; opacity:.85; margin-top:2px;}
+  .drive-status{display:flex; align-items:center; gap:6px; font-size:11px; margin-top:8px; opacity:.9;}
+  .dot{width:8px;height:8px;border-radius:50%;background:#e74c3c;}
+  .dot.on{background:#2ecc71;}
+  .container{max-width:640px; margin:0 auto; padding:14px;}
+
+  nav.tabs{
+    position:fixed; bottom:0; left:0; right:0; background:#fff; border-top:1px solid var(--line);
+    display:flex; z-index:60; box-shadow:0 -2px 10px rgba(0,0,0,.08);
+  }
+  nav.tabs button{
+    flex:1; border:none; background:none; padding:9px 2px 7px; font-size:10.5px; color:var(--muted);
+    display:flex; flex-direction:column; align-items:center; gap:3px; font-weight:600; font-family:inherit;
+  }
+  nav.tabs button .ic{font-size:19px;}
+  nav.tabs button.active{color:var(--green-800);}
+  nav.tabs button.active .ic{filter:drop-shadow(0 0 0 var(--green-800));}
+
+  .card{background:var(--paper); border:1px solid var(--line); border-radius:var(--radius); padding:14px; margin-bottom:12px; box-shadow:0 1px 3px rgba(0,0,0,.04);}
+  .stat-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;}
+  .stat{background:var(--paper); border:1px solid var(--line); border-radius:var(--radius); padding:12px; text-align:center;}
+  .stat .num{font-size:24px; font-weight:700; color:var(--green-800);}
+  .stat .lbl{font-size:11px; color:var(--muted); margin-top:2px;}
+  .stat.alert .num{color:var(--danger);}
+  .stat.gold .num{color:var(--gold-dark);}
+
+  h2.section{font-size:14px; color:var(--green-800); margin:18px 0 8px; font-weight:700; display:flex; align-items:center; gap:6px;}
+
+  input,select,textarea{
+    width:100%; padding:11px 12px; border:1.5px solid var(--line); border-radius:10px; font-size:15px;
+    font-family:inherit; background:#fff; color:var(--ink);
+  }
+  input:focus,select:focus,textarea:focus{outline:none; border-color:var(--green-700);}
+  label{font-size:12px; color:var(--muted); font-weight:600; display:block; margin:10px 0 4px;}
+  .row2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+
+  .btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:6px;
+    padding:12px 16px; border-radius:10px; border:none; font-size:14.5px; font-weight:700;
+    cursor:pointer; font-family:inherit; width:100%;
+  }
+  .btn-primary{background:var(--green-800); color:#fff;}
+  .btn-gold{background:var(--gold); color:var(--green-900);}
+  .btn-wa{background:#25D366; color:#fff;}
+  .btn-outline{background:none; border:1.5px solid var(--green-800); color:var(--green-800);}
+  .btn-danger{background:none; border:1.5px solid var(--danger); color:var(--danger);}
+  .btn-sm{padding:8px 10px; font-size:12.5px; width:auto;}
+  .btn:disabled{opacity:.45; cursor:not-allowed;}
+  .btn-row{display:flex; gap:8px; margin-top:8px;}
+
+  .search-box{position:relative; margin-bottom:12px;}
+  .search-box input{font-size:17px; padding:14px 14px 14px 42px; font-weight:600;}
+  .search-box .icon{position:absolute; left:14px; top:50%; transform:translateY(-50%); font-size:17px;}
+
+  .cust-card{
+    background:var(--paper); border:1.5px solid var(--line); border-radius:var(--radius); padding:14px; margin-bottom:10px;
+    cursor:pointer; transition:.15s;
+  }
+  .cust-card:active{transform:scale(.98);}
+  .cust-top{display:flex; justify-content:space-between; align-items:flex-start;}
+  .cust-top .name{font-size:16px; font-weight:700;}
+  .cust-top .coupon{font-size:12px; color:var(--muted); font-weight:600;}
+  .badge{font-size:10.5px; padding:3px 8px; border-radius:20px; font-weight:700;}
+  .badge.active{background:#e3f4e9; color:var(--ok);}
+  .badge.completed{background:#fdf1d8; color:var(--warn);}
+  .badge.expired{background:#fbe6e3; color:var(--danger);}
+  .progress-wrap{margin-top:10px;}
+  .progress-bar{height:8px; background:#eee7d3; border-radius:6px; overflow:hidden; margin-top:4px;}
+  .progress-fill{height:100%; background:linear-gradient(90deg,var(--green-700),var(--gold)); border-radius:6px;}
+  .progress-txt{font-size:12px; color:var(--muted); display:flex; justify-content:space-between; margin-top:3px;}
+  .meta-row{display:flex; flex-wrap:wrap; gap:10px; margin-top:8px; font-size:12px; color:var(--muted);}
+
+  .stamp-detail{padding-top:6px;}
+  .stamp-today-flag{background:#e3f4e9; color:var(--ok); padding:8px 10px; border-radius:8px; font-size:13px; text-align:center; font-weight:700; margin:10px 0;}
+
+  .modal-bg{position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:100; display:flex; align-items:flex-end; justify-content:center;}
+  .modal{background:var(--paper); width:100%; max-width:640px; max-height:88vh; overflow-y:auto; border-radius:20px 20px 0 0; padding:18px;}
+  .modal-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;}
+  .modal-head h3{margin:0; font-size:16px;}
+  .close-x{background:none; border:none; font-size:22px; color:var(--muted); cursor:pointer;}
+
+  .empty{text-align:center; padding:40px 20px; color:var(--muted);}
+  .empty .ic{font-size:40px; margin-bottom:8px;}
+
+  .toast{
+    position:fixed; bottom:80px; left:50%; transform:translateX(-50%); background:var(--green-900); color:#fff;
+    padding:11px 20px; border-radius:30px; font-size:13.5px; z-index:200; box-shadow:0 4px 14px rgba(0,0,0,.25);
+    font-weight:600;
+  }
+  .fab-toggle{display:flex; gap:6px; margin-bottom:10px;}
+  .fab-toggle button{flex:1; padding:9px; border-radius:9px; border:1.5px solid var(--line); background:#fff; font-weight:700; font-size:12.5px; color:var(--muted); font-family:inherit;}
+  .fab-toggle button.active{background:var(--green-800); color:#fff; border-color:var(--green-800);}
+  small.hint{color:var(--muted); font-size:11px; display:block; margin-top:3px;}
+  .settings-item{display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid var(--line);}
+  .settings-item:last-child{border-bottom:none;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <h1 class="tamil">🥛 Aavin Fresh Milk — கூப்பன் நிர்வாகி</h1>
+  <div class="sub">Coupon Loyalty Manager · 108, Main Bazaar, Virudhunagar</div>
+  <div class="drive-status">
+    <span class="dot" id="driveDot"></span>
+    <span id="driveText">Drive not connected — saving locally</span>
+  </div>
+</header>
+
+<div class="container" id="app"></div>
+
+<nav class="tabs">
+  <button data-tab="dashboard" class="active"><span class="ic">📊</span>Dashboard</button>
+  <button data-tab="stamp"><span class="ic">✅</span>Stamp Entry</button>
+  <button data-tab="customers"><span class="ic">👥</span>Customers</button>
+  <button data-tab="completed"><span class="ic">🎁</span>Completed</button>
+  <button data-tab="settings"><span class="ic">⚙️</span>Settings</button>
+</nav>
+
+<script>
+/* ===================== CONFIG ===================== */
+const CONFIG = {
+  STAMPS_FOR_FREE: 30,
+  EXPIRY_DAYS: 40,
+  COUPON_PREFIX: 'FM',
+  GOOGLE_CLIENT_ID: '598818197447-p4aiepu8sgear24hmhv0n6hbgsdarcac.apps.googleusercontent.com',
+  SHOP_NAME: 'Aavin Fresh Milk Stall'
+};
+const STORAGE_KEY = 'aavinCouponData_v1';
+const DRIVE_FILE_NAME = 'aavin_coupon_data.json';
+
+/* ===================== DATA LAYER ===================== */
+let DB = loadLocal();
+function defaultDB(){
+  return { customers: [], settings:{ shopName: CONFIG.SHOP_NAME, issuedBy:'', currentScheme:'', waTemplates:{
+    stamp:"வணக்கம் {name}! 🥛 இன்றைய பால் ஸ்டாம்ப் பதிவு செய்யப்பட்டது.\nஸ்டாம்ப்கள்: {stamps}/{total}\nஇன்னும் {remaining} ஸ்டாம்ப்கள் இருந்தால் இலவச பால் பெறலாம்!\n- {shop}",
+    completed:"🎉 வாழ்த்துக்கள் {name}!\nநீங்கள் அனைத்து {total} ஸ்டாம்ப்களையும் பூர்த்தி செய்துவிட்டீர்கள்.\nதயவுசெய்து இன்று உங்கள் இலவச பாலைப் பெற்றுக்கொள்ளவும்!\n- {shop}",
+    welcome:"{shop} விசுவாசத் திட்டத்திற்கு வரவேற்கிறோம்!\nஉங்கள் கூப்பன் எண்: {coupon}\n{total} ஸ்டாம்ப்கள் (ஒரு நாளைக்கு ஒன்று) சேகரித்து இலவச பால் பெறுங்கள்.\nஇது செல்லுபடியாகும் தேதி: {expiry}",
+    reminder:"வணக்கம் {name}! 🥛 இன்று உங்கள் பால் ஸ்டாம்ப் இன்னும் பதிவு செய்யப்படவில்லை.\nதற்போதைய ஸ்டாம்ப்கள்: {stamps}/{total}\nதயவுசெய்து உறுதிப்படுத்தவும் அல்லது கடையை தொடர்பு கொள்ளவும்.\n- {shop}",
+    schemeStamp:"வணக்கம் {name}! 🥛 இன்றைய பால் ஸ்டாம்ப் பதிவு செய்யப்பட்டது.\nஸ்டாம்ப்கள்: {stamps}/{total}\nஇன்னும் {remaining} ஸ்டாம்ப்கள் இருந்தால் இலவச பால் பெறலாம்!\n\n📢 புதிய சலுகை:\n{scheme}\n\n- {shop}"
+  }}, lastSync:null };
+}
+function loadLocal(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){
+      const data = JSON.parse(raw);
+      // migrate: add any missing template keys / settings without touching existing customized ones
+      const def = defaultDB();
+      if(data.settings && data.settings.waTemplates){
+        Object.keys(def.settings.waTemplates).forEach(k=>{
+          if(!data.settings.waTemplates[k]) data.settings.waTemplates[k] = def.settings.waTemplates[k];
+        });
+      }
+      if(data.settings && data.settings.currentScheme===undefined) data.settings.currentScheme = '';
+      return data;
+    }
+  }catch(e){}
+  return defaultDB();
+}
+function saveLocal(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(DB));
+  refreshStatusChecks();
+  if(driveReady) syncToDrive();
+}
+function todayStr(d=new Date()){ return d.toISOString().slice(0,10); }
+function addDays(dateStr,days){ const d=new Date(dateStr); d.setDate(d.getDate()+days); return todayStr(d); }
+function fmtDate(dateStr){
+  if(!dateStr) return '-';
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('en-IN',{day:'2-digit',month:'2-digit',year:'2-digit'});
+}
+
+/* status recompute: active / completed / expired */
+function refreshStatusChecks(){
+  const t = todayStr();
+  DB.customers.forEach(c=>{
+    if(c.status==='completed') return; // completed is terminal until reset
+    if(c.stamps.length >= CONFIG.STAMPS_FOR_FREE){ c.status='completed'; return; }
+    if(t > c.expiryDate){ c.status='expired'; }
+    else { c.status='active'; }
+  });
+}
+
+function nextCouponNo(){
+  let max = 0;
+  DB.customers.forEach(c=>{
+    const m = c.couponNo.match(/(\d+)$/);
+    if(m) max = Math.max(max, parseInt(m[1]));
+  });
+  return CONFIG.COUPON_PREFIX + String(max+1).padStart(3,'0');
+}
+
+/* ===================== WHATSAPP ===================== */
+function waLink(mobile, message){
+  let m = (mobile||'').replace(/\D/g,'');
+  if(m.length===10) m = '91'+m;
+  return `https://wa.me/${m}?text=${encodeURIComponent(message)}`;
+}
+function fillTemplate(tpl, c){
+  const remaining = Math.max(0, CONFIG.STAMPS_FOR_FREE - c.stamps.length);
+  return tpl
+    .replaceAll('{name}', c.name)
+    .replaceAll('{coupon}', c.couponNo)
+    .replaceAll('{stamps}', c.stamps.length)
+    .replaceAll('{total}', CONFIG.STAMPS_FOR_FREE)
+    .replaceAll('{remaining}', remaining)
+    .replaceAll('{expiry}', fmtDate(c.expiryDate))
+    .replaceAll('{shop}', DB.settings.shopName || CONFIG.SHOP_NAME)
+    .replaceAll('{scheme}', DB.settings.currentScheme || '');
+}
+function sendWA(customerId, type){
+  const c = DB.customers.find(x=>x.id===customerId);
+  if(!c) return;
+  const tpl = DB.settings.waTemplates[type];
+  const msg = fillTemplate(tpl, c);
+  window.open(waLink(c.mobile, msg), '_blank');
+}
+
+/* ===================== TABS ===================== */
+let currentTab = 'dashboard';
+document.querySelectorAll('nav.tabs button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    currentTab = btn.dataset.tab;
+    render();
+  });
+});
+
+/* ===================== RENDER ROOT ===================== */
+function render(){
+  refreshStatusChecks();
+  const app = document.getElementById('app');
+  if(currentTab==='dashboard') app.innerHTML = renderDashboard();
+  else if(currentTab==='stamp') app.innerHTML = renderStampEntry();
+  else if(currentTab==='customers') app.innerHTML = renderCustomers();
+  else if(currentTab==='completed') app.innerHTML = renderCompleted();
+  else if(currentTab==='settings') app.innerHTML = renderSettings();
+  bindTabEvents();
+}
+
+/* ===================== DASHBOARD ===================== */
+function renderDashboard(){
+  const active = DB.customers.filter(c=>c.status==='active');
+  const completed = DB.customers.filter(c=>c.status==='completed');
+  const expired = DB.customers.filter(c=>c.status==='expired');
+  const t = todayStr();
+  const stampedToday = DB.customers.filter(c=>c.stamps.includes(t)).length;
+  const freeDueToday = completed.filter(c=>!c.freeMilkGiven);
+  const expiringSoon = active.filter(c=> (new Date(c.expiryDate) - new Date(t))/86400000 <= 5);
+
+  let html = `
+  <div class="stat-grid">
+    <div class="stat"><div class="num">${DB.customers.length}</div><div class="lbl">Total Customers</div></div>
+    <div class="stat"><div class="num">${active.length}</div><div class="lbl">Active</div></div>
+    <div class="stat gold"><div class="num">${stampedToday}</div><div class="lbl">Stamped Today</div></div>
+    <div class="stat alert"><div class="num">${freeDueToday.length}</div><div class="lbl">Free Milk Due</div></div>
+  </div>`;
+
+  if(freeDueToday.length){
+    html += `<h2 class="section">🎁 Free Milk Pending</h2>`;
+    freeDueToday.forEach(c=>{
+      html += `<div class="card" style="display:flex;justify-content:space-between;align-items:center;">
+        <div><b>${c.name}</b><br><span style="font-size:12px;color:var(--muted)">${c.couponNo} · ${c.mobile}</span></div>
+        <button class="btn btn-gold btn-sm" onclick="openCustomer('${c.id}')">Open</button>
+      </div>`;
+    });
+  }
+
+  if(expiringSoon.length){
+    html += `<h2 class="section">⏰ Expiring Within 5 Days</h2>`;
+    expiringSoon.forEach(c=>{
+      html += `<div class="card" style="display:flex;justify-content:space-between;align-items:center;">
+        <div><b>${c.name}</b><br><span style="font-size:12px;color:var(--muted)">${c.couponNo} · Expires ${fmtDate(c.expiryDate)}</span></div>
+        <button class="btn btn-outline btn-sm" onclick="openCustomer('${c.id}')">Open</button>
+      </div>`;
+    });
+  }
+
+  html += `<h2 class="section">📈 Overview</h2>
+  <div class="card">
+    <div class="settings-item"><span>Active</span><b style="color:var(--ok)">${active.length}</b></div>
+    <div class="settings-item"><span>Completed</span><b style="color:var(--warn)">${completed.length}</b></div>
+    <div class="settings-item"><span>Expired</span><b style="color:var(--danger)">${expired.length}</b></div>
+    <div class="settings-item"><span>Avg. purchase (active)</span><b>${avgPurchaseAll(active)}</b></div>
+  </div>`;
+
+  if(DB.customers.length===0){
+    html = `<div class="empty"><div class="ic">🥛</div>No customers yet.<br>Go to <b>Customers</b> tab to add your first one.</div>` + html;
+  }
+  return html;
+}
+function avgPurchaseAll(list){
+  const nums = list.map(c=>parseFloat(c.avgPurchase)).filter(n=>!isNaN(n));
+  if(!nums.length) return '-';
+  return (nums.reduce((a,b)=>a+b,0)/nums.length).toFixed(2) + ' L/day';
+}
+
+/* ===================== STAMP ENTRY ===================== */
+let stampSearch = '';
+let stampEntryDate = todayStr();
+let showReminders = false;
+function toggleReminders(){ showReminders = !showReminders; render(); }
+function renderStampEntry(){
+  const isBackdated = stampEntryDate !== todayStr();
+  let html = `
+  <div class="card" style="padding:10px 14px;${isBackdated?'border-color:var(--gold-dark);background:#fdf6e3;':''}">
+    <label style="margin:0 0 4px;">📅 Entry Date / பதிவு தேதி${isBackdated?' — <span style="color:var(--gold-dark)">Backdated</span>':''}</label>
+    <input type="date" id="stampDateInput" value="${stampEntryDate}" max="${todayStr()}">
+    <small class="hint">Change this if you're catching up on past days' stamps. Defaults to today.</small>
+  </div>
+  <div class="search-box">
+    <span class="icon">🔍</span>
+    <input id="stampSearchInput" placeholder="Coupon No / Name / Mobile" value="${stampSearch}" autofocus>
+  </div>`;
+
+  const q = stampSearch.trim().toLowerCase();
+  let results = DB.customers.filter(c=>c.status!=='expired' || q);
+  if(q){
+    results = DB.customers.filter(c=>
+      c.couponNo.toLowerCase().includes(q) ||
+      c.name.toLowerCase().includes(q) ||
+      (c.mobile||'').includes(q)
+    );
+  } else {
+    results = DB.customers.filter(c=>c.status==='active').slice().sort((a,b)=> a.stamps.includes(stampEntryDate) - b.stamps.includes(stampEntryDate));
+  }
+
+  if(!results.length){
+    html += `<div class="empty"><div class="ic">🔎</div>No matching customer.</div>`;
+    return html;
+  }
+
+  if(!q){
+    const unstamped = DB.customers.filter(c=>c.status==='active' && !c.stamps.includes(stampEntryDate));
+    if(unstamped.length){
+      html += `
+      <div class="card" style="border-color:var(--gold-dark);">
+        <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="toggleReminders()">
+          <b style="color:var(--gold-dark);">⏰ Not Stamped Yet (${unstamped.length}) — ${fmtDate(stampEntryDate)}</b>
+          <span>${showReminders?'▲':'▼'}</span>
+        </div>
+        ${showReminders ? `
+          <div style="margin-top:10px;">
+          ${unstamped.map(c=>`
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);">
+              <div><b style="font-size:13.5px;">${c.name}</b><br><span style="font-size:11.5px;color:var(--muted)">${c.couponNo} · ${c.mobile||'-'}</span></div>
+              <button class="btn btn-wa btn-sm" onclick="sendWA('${c.id}','reminder')">💬 Remind</button>
+            </div>
+          `).join('')}
+          </div>
+        ` : `<small class="hint">Tap to view and send one-tap WhatsApp reminders.</small>`}
+      </div>`;
+    }
+  }
+
+  results.forEach(c=>{
+    const already = c.stamps.includes(stampEntryDate);
+    const pct = Math.min(100, Math.round(c.stamps.length/CONFIG.STAMPS_FOR_FREE*100));
+    html += `
+    <div class="cust-card" onclick="openStampCard('${c.id}')">
+      <div class="cust-top">
+        <div><div class="name">${c.name}</div><div class="coupon">${c.couponNo} · ${c.mobile||'-'}</div></div>
+        <span class="badge ${c.status}">${c.status}</span>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-txt"><span>${c.stamps.length}/${CONFIG.STAMPS_FOR_FREE} stamps</span><span>${pct}%</span></div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+      </div>
+      ${already ? `<div class="stamp-today-flag">✓ Already stamped for ${fmtDate(stampEntryDate)}</div>` : ''}
+    </div>`;
+  });
+  return html;
+}
+function openStampCard(id){
+  const c = DB.customers.find(x=>x.id===id);
+  const already = c.stamps.includes(stampEntryDate);
+  const remaining = Math.max(0, CONFIG.STAMPS_FOR_FREE - c.stamps.length);
+  const modal = document.createElement('div');
+  modal.className='modal-bg';
+  modal.innerHTML = `
+  <div class="modal">
+    <div class="modal-head"><h3>${c.name}</h3><button class="close-x" onclick="closeModal()">×</button></div>
+    <div class="stamp-detail">
+      <div class="meta-row">
+        <span>🎫 ${c.couponNo}</span><span>📱 ${c.mobile||'-'}</span><span>📅 Issued ${fmtDate(c.issueDate)}</span><span>⏳ Expires ${fmtDate(c.expiryDate)}</span>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-txt"><span>${c.stamps.length}/${CONFIG.STAMPS_FOR_FREE} stamps</span><span>${remaining} to go</span></div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${Math.min(100,c.stamps.length/CONFIG.STAMPS_FOR_FREE*100)}%"></div></div>
+      </div>
+      ${already ? `<div class="stamp-today-flag">✓ Already stamped for ${fmtDate(stampEntryDate)}</div>` : ''}
+      <div class="btn-row">
+        <button class="btn btn-primary" ${already||c.status!=='active'?'disabled':''} onclick="markStamp('${c.id}')">✅ Give Stamp for ${fmtDate(stampEntryDate)}</button>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-wa" onclick="sendWA('${c.id}','stamp')">💬 Normal Update</button>
+        <button class="btn btn-gold" onclick="sendWA('${c.id}','schemeStamp')">🎉 With Scheme</button>
+      </div>
+      ${c.status==='completed' && !c.freeMilkGiven ? `<div class="btn-row"><button class="btn btn-gold" onclick="markFreeMilkGiven('${c.id}')">🎁 Mark Free Milk Given</button></div>` : ''}
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+}
+function closeModal(){
+  document.querySelectorAll('.modal-bg').forEach(m=>m.remove());
+}
+function markStamp(id){
+  const c = DB.customers.find(x=>x.id===id);
+  const t = stampEntryDate;
+  if(c.stamps.includes(t)) return;
+  c.stamps.push(t);
+  c.stamps.sort();
+  let justCompleted = false;
+  if(c.stamps.length >= CONFIG.STAMPS_FOR_FREE && c.status!=='completed'){
+    c.status='completed'; justCompleted = true;
+  }
+  saveLocal();
+  closeModal();
+  showToast(`✓ Stamp given to ${c.name} for ${fmtDate(t)} (${c.stamps.length}/${CONFIG.STAMPS_FOR_FREE})`);
+  render();
+  setTimeout(()=>{
+    if(justCompleted){
+      showConfirm(`${c.name} completed ${CONFIG.STAMPS_FOR_FREE} stamps! Send congratulations on WhatsApp?`, ()=> sendWA(id,'completed'));
+    } else {
+      showSendChoice(id);
+    }
+  }, 250);
+}
+function showSendChoice(customerId){
+  const c = DB.customers.find(x=>x.id===customerId);
+  const modal = document.createElement('div');
+  modal.className='confirm-overlay';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;display:flex;align-items:center;justify-content:center;padding:20px;';
+  modal.innerHTML = `<div style="background:var(--paper);border-radius:16px;padding:18px;max-width:360px;width:100%;box-shadow:0 8px 30px rgba(0,0,0,.3);">
+    <div style="font-size:15px;line-height:1.5;margin-bottom:14px;">Send WhatsApp message to ${c.name}?</div>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <button class="btn btn-wa" id="sendNormalBtn">💬 Normal Update</button>
+      <button class="btn btn-gold" id="sendSchemeBtn">🎉 With Scheme</button>
+      <button class="btn btn-outline" id="skipSendBtn">Skip</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+  modal.querySelector('#sendNormalBtn').addEventListener('click', ()=>{ modal.remove(); sendWA(customerId,'stamp'); });
+  modal.querySelector('#sendSchemeBtn').addEventListener('click', ()=>{ modal.remove(); sendWA(customerId,'schemeStamp'); });
+  modal.querySelector('#skipSendBtn').addEventListener('click', ()=> modal.remove());
+}
+function markFreeMilkGiven(id){
+  const c = DB.customers.find(x=>x.id===id);
+  c.freeMilkGiven = true;
+  c.freeMilkDate = todayStr();
+  saveLocal();
+  closeModal();
+  showToast(`🎁 Free milk marked given to ${c.name}`);
+  render();
+}
+
+/* ===================== CUSTOMERS ===================== */
+let custFilter = 'all';
+function renderCustomers(){
+  let html = `<button class="btn btn-primary" onclick="openCustomerForm()">➕ Add New Customer</button>`;
+  html += `<div class="fab-toggle" style="margin-top:12px;">
+    ${['all','active','completed','expired'].map(f=>`<button class="${custFilter===f?'active':''}" onclick="setCustFilter('${f}')">${f[0].toUpperCase()+f.slice(1)}</button>`).join('')}
+  </div>`;
+  html += `<div class="search-box"><span class="icon">🔍</span><input id="custSearchInput" placeholder="Search name / coupon / mobile" value="${custSearch}"></div>`;
+
+  let list = DB.customers.slice();
+  if(custFilter!=='all') list = list.filter(c=>c.status===custFilter);
+  const q = custSearch.trim().toLowerCase();
+  if(q) list = list.filter(c=> c.name.toLowerCase().includes(q) || c.couponNo.toLowerCase().includes(q) || (c.mobile||'').includes(q));
+  list.sort((a,b)=> a.couponNo.localeCompare(b.couponNo));
+
+  if(!list.length){ html += `<div class="empty"><div class="ic">👥</div>No customers found.</div>`; return html; }
+
+  list.forEach(c=>{
+    const pct = Math.min(100, Math.round(c.stamps.length/CONFIG.STAMPS_FOR_FREE*100));
+    html += `
+    <div class="cust-card" onclick="openCustomerForm('${c.id}')">
+      <div class="cust-top">
+        <div><div class="name">${c.name}</div><div class="coupon">${c.couponNo} · ${c.mobile||'-'}</div></div>
+        <span class="badge ${c.status}">${c.status}</span>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-txt"><span>${c.stamps.length}/${CONFIG.STAMPS_FOR_FREE} stamps</span><span>${pct}%</span></div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+      </div>
+      <div class="meta-row"><span>📅 ${fmtDate(c.issueDate)}</span><span>⏳ ${fmtDate(c.expiryDate)}</span>${c.avgPurchase?`<span>🥛 ${c.avgPurchase} L/day avg</span>`:''}</div>
+    </div>`;
+  });
+  return html;
+}
+function setCustFilter(f){ custFilter=f; render(); }
+let custSearch = '';
+
+function openCustomerForm(id){
+  const c = id ? DB.customers.find(x=>x.id===id) : null;
+  const isNew = !c;
+  const issueDate = c ? c.issueDate : todayStr();
+  const expiryDate = c ? c.expiryDate : addDays(issueDate, CONFIG.EXPIRY_DAYS);
+  const modal = document.createElement('div');
+  modal.className='modal-bg';
+  modal.innerHTML = `
+  <div class="modal">
+    <div class="modal-head"><h3>${isNew?'Add New Customer':'Edit Customer'}</h3><button class="close-x" onclick="closeModal()">×</button></div>
+    <div id="custFormBody">
+      <label>Coupon No *</label>
+      <input id="f_coupon" value="${c?c.couponNo:nextCouponNo()}">
+      <label>Customer Name *</label>
+      <input id="f_name" value="${c?c.name:''}">
+      <label>Mobile Number *</label>
+      <input id="f_mobile" type="tel" value="${c?c.mobile:''}" placeholder="10-digit mobile">
+      <label>Address</label>
+      <textarea id="f_address" rows="2">${c?c.address||'':''}</textarea>
+      <div class="row2">
+        <div><label>Average Purchase (L/day)</label><input id="f_avg" type="number" step="0.1" value="${c?c.avgPurchase||'':''}"></div>
+        <div><label>Referred By</label><input id="f_ref" value="${c?c.referredBy||'':''}"></div>
+      </div>
+      <div class="row2">
+        <div><label>Issue Date</label><input id="f_issue" type="date" value="${issueDate}" onchange="document.getElementById('f_expiry').value = calcExpiry(this.value)"></div>
+        <div><label>Expiry Date (auto)</label><input id="f_expiry" type="date" value="${expiryDate}"></div>
+      </div>
+      <label>Issued By</label>
+      <input id="f_issuedby" value="${c?c.issuedBy||'':DB.settings.issuedBy||''}">
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="saveCustomer(${isNew?'null':`'${c.id}'`})">${isNew?'Add Customer':'Save Changes'}</button>
+      </div>
+      ${isNew?`<div class="btn-row"><button class="btn btn-wa" onclick="saveCustomerAndWelcome()">➕ Add & Send Welcome WhatsApp</button></div>`:''}
+      ${!isNew?`<div class="btn-row"><button class="btn btn-danger" onclick="deleteCustomer('${c.id}')">🗑 Delete Customer</button></div>`:''}
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+}
+function calcExpiry(issueDate){ return addDays(issueDate, CONFIG.EXPIRY_DAYS); }
+
+function collectFormData(){
+  return {
+    couponNo: document.getElementById('f_coupon').value.trim(),
+    name: document.getElementById('f_name').value.trim(),
+    mobile: document.getElementById('f_mobile').value.trim(),
+    address: document.getElementById('f_address').value.trim(),
+    avgPurchase: document.getElementById('f_avg').value,
+    referredBy: document.getElementById('f_ref').value.trim(),
+    issueDate: document.getElementById('f_issue').value,
+    expiryDate: document.getElementById('f_expiry').value,
+    issuedBy: document.getElementById('f_issuedby').value.trim()
+  };
+}
+function saveCustomer(id){
+  const data = collectFormData();
+  if(!data.couponNo || !data.name || !data.mobile){ showAlertBox('Coupon No, Name and Mobile are required.'); return; }
+  if(id){
+    const c = DB.customers.find(x=>x.id===id);
+    Object.assign(c, data);
+  } else {
+    if(DB.customers.some(x=>x.couponNo.toLowerCase()===data.couponNo.toLowerCase())){ showAlertBox('Coupon number already exists.'); return; }
+    DB.customers.push({ id: 'c_'+Date.now(), ...data, stamps: [], status:'active', freeMilkGiven:false, freeMilkDate:null });
+  }
+  saveLocal();
+  closeModal();
+  showToast('Saved successfully');
+  render();
+}
+function saveCustomerAndWelcome(){
+  const data = collectFormData();
+  if(!data.couponNo || !data.name || !data.mobile){ showAlertBox('Coupon No, Name and Mobile are required.'); return; }
+  if(DB.customers.some(x=>x.couponNo.toLowerCase()===data.couponNo.toLowerCase())){ showAlertBox('Coupon number already exists.'); return; }
+  const newC = { id: 'c_'+Date.now(), ...data, stamps: [], status:'active', freeMilkGiven:false, freeMilkDate:null };
+  DB.customers.push(newC);
+  saveLocal();
+  closeModal();
+  render();
+  sendWA(newC.id, 'welcome');
+}
+function deleteCustomer(id){
+  showConfirm('இந்த வாடிக்கையாளரை நிரந்தரமாக நீக்கவா? இதை மீட்க முடியாது.\nDelete this customer permanently? This cannot be undone.', ()=>{
+    DB.customers = DB.customers.filter(x=>x.id!==id);
+    saveLocal();
+    closeModal();
+    render();
+    showToast('Customer deleted');
+  });
+}
+function openCustomer(id){ currentTab='customers'; document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.toggle('active', b.dataset.tab==='customers')); render(); openCustomerForm(id); }
+
+/* ===================== COMPLETED ===================== */
+function renderCompleted(){
+  const list = DB.customers.filter(c=>c.status==='completed').sort((a,b)=> (a.freeMilkGiven?1:0)-(b.freeMilkGiven?1:0));
+  let html = `<h2 class="section">🎁 Completed Coupons (${CONFIG.STAMPS_FOR_FREE}/${CONFIG.STAMPS_FOR_FREE} stamps)</h2>`;
+  if(!list.length){ html += `<div class="empty"><div class="ic">🎁</div>No completed coupons yet.</div>`; return html; }
+  list.forEach(c=>{
+    html += `<div class="card">
+      <div class="cust-top">
+        <div><div class="name">${c.name}</div><div class="coupon">${c.couponNo} · ${c.mobile}</div></div>
+        <span class="badge ${c.freeMilkGiven?'active':'completed'}">${c.freeMilkGiven?'Free Given':'Pending'}</span>
+      </div>
+      <div class="meta-row"><span>Issued ${fmtDate(c.issueDate)}</span>${c.freeMilkGiven?`<span>Free milk given ${fmtDate(c.freeMilkDate)}</span>`:''}</div>
+      <div class="btn-row">
+        ${!c.freeMilkGiven?`<button class="btn btn-gold btn-sm" onclick="markFreeMilkGiven('${c.id}')">Mark Free Milk Given</button>`:''}
+        <button class="btn btn-wa btn-sm" onclick="sendWA('${c.id}','completed')">WhatsApp</button>
+      </div>
+    </div>`;
+  });
+  return html;
+}
+
+/* ===================== SETTINGS / EXPORT ===================== */
+function renderSettings(){
+  return `
+  <h2 class="section">📢 Current Scheme / New Offer</h2>
+  <div class="card">
+    <label>This text fills the {scheme} placeholder in the "With Scheme" WhatsApp message. Update whenever you have a new offer.</label>
+    <textarea id="s_scheme" rows="3" placeholder="e.g. இந்த மாதம் கஜா தேநீர் பொருட்களில் 10% தள்ளுபடி!">${DB.settings.currentScheme||''}</textarea>
+    <div class="btn-row"><button class="btn btn-primary" onclick="saveSettings()">Save</button></div>
+  </div>
+
+  <h2 class="section">🏪 Shop Details</h2>
+  <div class="card">
+    <label>Shop Name</label>
+    <input id="s_shopname" value="${DB.settings.shopName}">
+    <label>Default "Issued By"</label>
+    <input id="s_issuedby" value="${DB.settings.issuedBy||''}">
+    <div class="btn-row"><button class="btn btn-primary" onclick="saveSettings()">Save</button></div>
+  </div>
+
+  <h2 class="section">💬 WhatsApp Message Templates</h2>
+  <div class="card">
+    <label>On Stamp Given — use {name} {coupon} {stamps} {total} {remaining} {expiry} {shop}</label>
+    <textarea id="t_stamp" rows="4">${DB.settings.waTemplates.stamp}</textarea>
+    <label>Stamp + Scheme (adds {scheme} from above)</label>
+    <textarea id="t_schemeStamp" rows="5">${DB.settings.waTemplates.schemeStamp}</textarea>
+    <label>On Coupon Completed</label>
+    <textarea id="t_completed" rows="4">${DB.settings.waTemplates.completed}</textarea>
+    <label>Welcome Message (new customer)</label>
+    <textarea id="t_welcome" rows="4">${DB.settings.waTemplates.welcome}</textarea>
+    <label>Reminder (not stamped yet)</label>
+    <textarea id="t_reminder" rows="4">${DB.settings.waTemplates.reminder}</textarea>
+    <div class="btn-row"><button class="btn btn-primary" onclick="saveTemplates()">Save Templates</button></div>
+    <div class="btn-row"><button class="btn btn-outline" onclick="resetTemplatesToTamil()">🔄 Reset All to Tamil Defaults</button></div>
+  </div>
+
+  <h2 class="section">📤 Export</h2>
+  <div class="card">
+    <button class="btn btn-outline" onclick="exportExcel()">📊 Export Register (Excel)</button>
+    <div class="btn-row"><button class="btn btn-outline" onclick="shareDailySheetWA()">💬 Share Today's Sheet on WhatsApp</button></div>
+  </div>
+
+  <h2 class="section">☁️ Google Drive Sync</h2>
+  <div class="card">
+    <p style="font-size:13px;color:var(--muted);margin-top:0;">
+      Backs up all customer & stamp data to your Google Drive (private app folder). Works across devices — sign in with the same Google account.
+    </p>
+    <div class="btn-row">
+      <button class="btn btn-primary" id="driveBtn" onclick="handleDriveClick()">Connect Google Drive</button>
+    </div>
+    <small class="hint" id="lastSyncHint">${DB.settings.lastSync ? 'Last synced: '+new Date(DB.settings.lastSync).toLocaleString('en-IN') : 'Not synced yet'}</small>
+    <small class="hint">✅ Using your existing Aavin Google Client ID. Just tap Connect — no extra setup needed once this page is live on aavinfreshmilkstall-dev.github.io.</small>
+  </div>
+
+  <h2 class="section">💾 Local Backup</h2>
+  <div class="card">
+    <div class="btn-row"><button class="btn btn-outline" onclick="exportJSON()">Download Backup (.json)</button></div>
+    <div class="btn-row">
+      <label class="btn btn-outline" style="text-align:center;">Restore from Backup
+        <input type="file" accept=".json" style="display:none" onchange="restoreJSON(event)">
+      </label>
+    </div>
+  </div>
+  `;
+}
+function saveSettings(){
+  DB.settings.shopName = document.getElementById('s_shopname').value.trim() || CONFIG.SHOP_NAME;
+  DB.settings.issuedBy = document.getElementById('s_issuedby').value.trim();
+  const schemeEl = document.getElementById('s_scheme');
+  if(schemeEl) DB.settings.currentScheme = schemeEl.value.trim();
+  saveLocal(); showToast('Settings saved');
+}
+function saveTemplates(){
+  DB.settings.waTemplates.stamp = document.getElementById('t_stamp').value;
+  DB.settings.waTemplates.schemeStamp = document.getElementById('t_schemeStamp').value;
+  DB.settings.waTemplates.completed = document.getElementById('t_completed').value;
+  DB.settings.waTemplates.welcome = document.getElementById('t_welcome').value;
+  DB.settings.waTemplates.reminder = document.getElementById('t_reminder').value;
+  saveLocal(); showToast('Templates saved');
+}
+function resetTemplatesToTamil(){
+  showConfirm('இது தற்போதைய அனைத்து WhatsApp templates-ஐயும் Tamil default-க்கு மாற்றும். தொடரவா?\nThis will overwrite all your current WhatsApp templates with Tamil defaults. Continue?', ()=>{
+    DB.settings.waTemplates = defaultDB().settings.waTemplates;
+    saveLocal();
+    render();
+    showToast('Templates reset to Tamil');
+  });
+}
+
+function exportExcel(){
+  const rows = DB.customers.map((c,i)=>({
+    'S.No': i+1,
+    'Coupon No': c.couponNo,
+    'Name': c.name,
+    'Mobile': c.mobile,
+    'Address': c.address||'',
+    'Issue Date': fmtDate(c.issueDate),
+    'Expiry Date': fmtDate(c.expiryDate),
+    'Avg Purchase (L/day)': c.avgPurchase||'',
+    'Stamps Earned': c.stamps.length,
+    'Free Milk Given': c.freeMilkGiven ? 'Yes' : 'No',
+    'Free Milk Date': c.freeMilkDate ? fmtDate(c.freeMilkDate) : '',
+    'Referred By': c.referredBy||'',
+    'Status': c.status
+  }));
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws['!cols'] = [{wch:5},{wch:10},{wch:18},{wch:12},{wch:20},{wch:11},{wch:11},{wch:10},{wch:10},{wch:10},{wch:12},{wch:12},{wch:10}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Coupon Register');
+  XLSX.writeFile(wb, `Aavin_Coupon_Register_${todayStr()}.xlsx`);
+}
+function shareDailySheetWA(){
+  const t = stampEntryDate;
+  const stamped = DB.customers.filter(c=>c.stamps.includes(t));
+  let msg = `*${DB.settings.shopName}*\nதின ஸ்டாம்ப் பட்டியல் — ${fmtDate(t)}\n\n`;
+  if(!stamped.length) msg += 'இன்று இன்னும் ஸ்டாம்ப் கொடுக்கப்படவில்லை.';
+  else stamped.forEach((c,i)=>{ msg += `${i+1}. ${c.couponNo} - ${c.name} (${c.stamps.length}/${CONFIG.STAMPS_FOR_FREE})\n`; });
+  window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+}
+function exportJSON(){
+  const blob = new Blob([JSON.stringify(DB,null,2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `aavin_coupon_backup_${todayStr()}.json`;
+  a.click();
+}
+function restoreJSON(evt){
+  const file = evt.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e=>{
+    try{
+      const data = JSON.parse(e.target.result);
+      if(!data.customers) throw new Error('invalid');
+      showConfirm('This will replace all current data. Continue?', ()=>{
+        DB = data; saveLocal(); render(); showToast('Backup restored');
+      });
+    }catch(err){ showAlertBox('Invalid backup file.'); }
+  };
+  reader.readAsText(file);
+}
+
+/* ===================== GOOGLE DRIVE SYNC ===================== */
+let tokenClient, accessToken=null, driveReady=false;
+function handleDriveClick(){
+  if(CONFIG.GOOGLE_CLIENT_ID.includes('YOUR_GOOGLE_CLIENT_ID')){
+    showAlertBox('Google Client ID not set up yet.\n\nOpen the file and replace GOOGLE_CLIENT_ID in CONFIG with your own Google Cloud OAuth Client ID (same pattern as your other Aavin apps), and add this page\'s URL to Authorized JavaScript origins in Google Cloud Console.');
+    return;
+  }
+  if(!tokenClient){
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: CONFIG.GOOGLE_CLIENT_ID,
+      scope: 'https://www.googleapis.com/auth/drive.appdata',
+      callback: (resp)=>{
+        if(resp.error){ showToast('Drive connection failed'); return; }
+        accessToken = resp.access_token;
+        driveReady = true;
+        updateDriveStatus(true);
+        loadFromDrive();
+      }
+    });
+  }
+  tokenClient.requestAccessToken();
+}
+function updateDriveStatus(on){
+  document.getElementById('driveDot').classList.toggle('on', on);
+  document.getElementById('driveText').textContent = on ? 'Drive connected — auto-syncing' : 'Drive not connected — saving locally';
+  const btn = document.getElementById('driveBtn');
+  if(btn) btn.textContent = on ? 'Reconnect Drive' : 'Connect Google Drive';
+}
+async function findDriveFileId(){
+  const res = await fetch('https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&fields=files(id,name)', {
+    headers:{ Authorization:'Bearer '+accessToken }
+  });
+  const data = await res.json();
+  const f = (data.files||[]).find(f=>f.name===DRIVE_FILE_NAME);
+  return f ? f.id : null;
+}
+async function syncToDrive(){
+  if(!driveReady || !accessToken) return;
+  try{
+    const fileId = await findDriveFileId();
+    const metadata = { name: DRIVE_FILE_NAME, parents: fileId?undefined:['appDataFolder'] };
+    const boundary = 'aavinBoundary';
+    const body =
+      `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n`+
+      `--${boundary}\r\nContent-Type: application/json\r\n\r\n${JSON.stringify(DB)}\r\n--${boundary}--`;
+    const url = fileId
+      ? `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`
+      : `https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart`;
+    await fetch(url, {
+      method: fileId ? 'PATCH' : 'POST',
+      headers:{ Authorization:'Bearer '+accessToken, 'Content-Type':`multipart/related; boundary=${boundary}` },
+      body
+    });
+    DB.settings.lastSync = new Date().toISOString();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(DB));
+    const hint = document.getElementById('lastSyncHint');
+    if(hint) hint.textContent = 'Last synced: '+new Date(DB.settings.lastSync).toLocaleString('en-IN');
+  }catch(e){ console.error('Drive sync failed', e); }
+}
+async function loadFromDrive(){
+  try{
+    const fileId = await findDriveFileId();
+    if(!fileId){ syncToDrive(); return; }
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, { headers:{ Authorization:'Bearer '+accessToken } });
+    const remote = await res.json();
+    if(remote && remote.customers){
+      if(DB.customers.length===0){
+        DB = remote; localStorage.setItem(STORAGE_KEY, JSON.stringify(DB)); render();
+      } else {
+        showConfirm('Data found on Drive. Load it? (This will replace current local data)', ()=>{
+          DB = remote; localStorage.setItem(STORAGE_KEY, JSON.stringify(DB)); render();
+        });
+      }
+    }
+    showToast('Drive sync complete');
+  }catch(e){ console.error(e); }
+}
+
+/* ===================== CUSTOM CONFIRM / ALERT (native dialogs are unreliable in installed PWAs) ===================== */
+function showConfirm(message, onConfirm, onCancel){
+  const modal = document.createElement('div');
+  modal.className='confirm-overlay';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;display:flex;align-items:center;justify-content:center;padding:20px;';
+  modal.innerHTML = `<div style="background:var(--paper);border-radius:16px;padding:18px;max-width:360px;width:100%;box-shadow:0 8px 30px rgba(0,0,0,.3);">
+    <div style="font-size:15px;line-height:1.5;margin-bottom:14px;white-space:pre-line;">${message}</div>
+    <div class="btn-row" style="margin-top:0;">
+      <button class="btn btn-outline" id="confirmCancelBtn">Cancel</button>
+      <button class="btn btn-primary" id="confirmOkBtn">OK</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+  modal.querySelector('#confirmCancelBtn').addEventListener('click', ()=>{ modal.remove(); if(onCancel) onCancel(); });
+  modal.querySelector('#confirmOkBtn').addEventListener('click', ()=>{ modal.remove(); onConfirm(); });
+}
+function showAlertBox(message){
+  const modal = document.createElement('div');
+  modal.className='confirm-overlay';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;display:flex;align-items:center;justify-content:center;padding:20px;';
+  modal.innerHTML = `<div style="background:var(--paper);border-radius:16px;padding:18px;max-width:360px;width:100%;box-shadow:0 8px 30px rgba(0,0,0,.3);">
+    <div style="font-size:15px;line-height:1.5;margin-bottom:14px;white-space:pre-line;">${message}</div>
+    <div class="btn-row" style="margin-top:0;">
+      <button class="btn btn-primary" id="alertOkBtn">OK</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+  modal.querySelector('#alertOkBtn').addEventListener('click', ()=> modal.remove());
+}
+
+/* ===================== UI HELPERS ===================== */
+function showToast(msg){
+  document.querySelectorAll('.toast').forEach(t=>t.remove());
+  const t = document.createElement('div');
+  t.className='toast'; t.textContent=msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(), 2600);
+}
+function bindTabEvents(){
+  const dEl = document.getElementById('stampDateInput');
+  if(dEl) dEl.addEventListener('change', e=>{ stampEntryDate = e.target.value || todayStr(); render(); });
+  const s1 = document.getElementById('stampSearchInput');
+  if(s1) s1.addEventListener('input', e=>{ stampSearch = e.target.value; render(); s1.focus(); s1.setSelectionRange(s1.value.length,s1.value.length); });
+  const s2 = document.getElementById('custSearchInput');
+  if(s2) s2.addEventListener('input', e=>{ custSearch = e.target.value; render(); s2.focus(); s2.setSelectionRange(s2.value.length,s2.value.length); });
+}
+
+/* ===================== INIT ===================== */
+render();
+</script>
+</body>
+</html>
