@@ -402,7 +402,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
           </div>
           <div class="field full">
             <label class="form-label">Address Line 2 / Phone</label>
-            <input class="inp full" id="s-addr2" value="📞 9894043765">
+            <input class="inp full" id="s-addr2" value="Ph: 9894043765">
           </div>
           <div class="field">
             <label class="form-label">GSTIN</label>
@@ -505,7 +505,7 @@ let state = {
   settings: {
     shopName:'Aavin Fresh Milk Stall',
     addr1:'108, Main Bazaar, Virudhunagar',
-    addr2:'📞 9894043765',
+    addr2:'Ph: 9894043765',
     gstin:'',
     prefix:'INV-',
     footer:'Thank you! Please visit again 🙏',
@@ -833,8 +833,9 @@ function showReceipt(bill, isNew=false){
   currentReceiptBill = bill;
   const s = state.settings;
   document.getElementById('rcpt-shop').textContent = s.shopName;
+  const cleanAddr2 = (s.addr2||'').replace(/[^\x00-\x7F]/g, '').trim();
   document.getElementById('rcpt-addr').innerHTML =
-    `${s.addr1}<br>${s.addr2}${s.gstin?'<br>GSTIN: '+s.gstin:''}`;
+    `${s.addr1}<br>${cleanAddr2}${s.gstin?'<br>GSTIN: '+s.gstin:''}`;
   document.getElementById('rcpt-meta').innerHTML=`
     <div class="rcpt-row"><span>Bill No</span><span><b>${bill.billNo}</b></span></div>
     <div class="rcpt-row"><span>Date</span><span>${bill.date}</span></div>
@@ -843,15 +844,18 @@ function showReceipt(bill, isNew=false){
   `;
   document.getElementById('rcpt-items').innerHTML=bill.items.map(i=>`
     <div class="rcpt-item">
-      <span>${i.icon||''} ${i.name} × ${i.qty} ${i.unit||''}</span>
-      <span>₹${(i.price*i.qty).toFixed(2)}</span>
+      <span>${i.name} x ${i.qty} ${i.unit||''}</span>
+      <span>Rs.${(i.price*i.qty).toFixed(2)}</span>
+    </div>
+    <div class="rcpt-item" style="font-size:11px;color:#888;padding-top:0">
+      <span>@ Rs.${Number(i.price).toFixed(2)} each</span>
     </div>
   `).join('');
   document.getElementById('rcpt-totals').innerHTML=`
-    <div class="rcpt-row"><span>Subtotal</span><span>₹${bill.subtotal.toFixed(2)}</span></div>
-    <div class="rcpt-row"><span>Discount</span><span>₹${bill.discAmt.toFixed(2)}</span></div>
-    <div class="rcpt-row bold"><span>TOTAL</span><span>₹${bill.total.toFixed(2)}</span></div>
-    ${bill.cashGiven>0?`<div class="rcpt-row"><span>Cash Given</span><span>₹${bill.cashGiven.toFixed(2)}</span></div><div class="rcpt-row"><span>Change</span><span>₹${bill.change.toFixed(2)}</span></div>`:''}
+    <div class="rcpt-row"><span>Subtotal</span><span>Rs.${bill.subtotal.toFixed(2)}</span></div>
+    <div class="rcpt-row"><span>Discount</span><span>Rs.${bill.discAmt.toFixed(2)}</span></div>
+    <div class="rcpt-row bold"><span>TOTAL AMOUNT</span><span>Rs.${bill.total.toFixed(2)}</span></div>
+    ${bill.cashGiven>0?`<div class="rcpt-row"><span>Cash Received</span><span>Rs.${bill.cashGiven.toFixed(2)}</span></div><div class="rcpt-row"><span>Balance</span><span>Rs.${bill.change.toFixed(2)}</span></div>`:''}
   `;
   document.getElementById('rcpt-footer').textContent = s.footer;
   document.getElementById('modal-overlay').classList.add('open');
@@ -880,7 +884,7 @@ function sendWhatsApp(){
   msg += `\nBill No: *${b.billNo}*\nDate: ${b.date}`;
   msg += `\nCustomer: ${b.customer}${b.phone?' ('+b.phone+')':''}`;
   msg += `\n\n*Items:*\n`;
-  b.items.forEach(i=> msg+=`${i.icon||''} ${i.name} × ${i.qty} = ₹${(i.price*i.qty).toFixed(2)}\n`);
+  b.items.forEach(i=> msg+=`- ${i.name} x ${i.qty} ${i.unit||''} = Rs.${(i.price*i.qty).toFixed(2)}\n`);
   msg += `\nSubtotal: ₹${b.subtotal.toFixed(2)}`;
   if(b.discAmt>0) msg+=`\nDiscount: ₹${b.discAmt.toFixed(2)}`;
   msg += `\n*Total: ₹${b.total.toFixed(2)}*`;
