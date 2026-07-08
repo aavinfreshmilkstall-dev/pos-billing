@@ -1309,6 +1309,15 @@ function toast(msg){
 }
 
 init();
+
+// Register Service Worker
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/pos-billing/sw.js')
+      .then(r => console.log('SW registered:', r.scope))
+      .catch(e => console.log('SW error:', e));
+  });
+}
 </script>
 </body>
 </html>
