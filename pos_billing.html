@@ -913,6 +913,10 @@ function generateBill(){
   };
   state.settings.billCounter++;
   state.bills.unshift(bill);
+
+  // Keep the completed bill in the receipt, but clear the product-entry cart
+  // immediately so the next customer's bill starts with an empty cart.
+  clearCart();
   showReceipt(bill, true);
 }
 
