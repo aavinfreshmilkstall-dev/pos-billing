@@ -249,11 +249,102 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
   pointer-events:none;white-space:nowrap;}
 #toast.show{opacity:1;}
 
+/* LAPTOP / DESKTOP LAYOUT */
+@media screen and (min-width: 1000px){
+  body{overflow:hidden;}
+  #topbar{min-height:58px;padding:10px 22px;}
+  #topbar h1{font-size:19px;}
+  #topbar .sub{font-size:11px;}
+  #app{
+    grid-template-columns:64px minmax(0,1fr) 390px;
+    height:calc(100vh - 58px);
+  }
+  #sidenav{padding-top:14px;gap:7px;}
+  .snav{width:48px;height:48px;font-size:20px;}
+  #main{padding:20px 22px;min-width:0;}
+  #cat-bar{gap:8px;margin-bottom:16px;}
+  .cat-chip{padding:7px 14px;font-size:13px;}
+  #product-grid{grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:13px;}
+  .prod-card{padding:15px 10px;}
+  .prod-img{width:82px;height:82px;}
+  .prod-name{font-size:14px;}
+  .prod-price{font-size:14px;}
+  #cart-header{padding:16px;}
+  #cart-items{padding:12px 16px;}
+  #cart-footer{padding:14px 16px;}
+  .cust-input{padding:9px 11px;font-size:14px;}
+  #bill-btn{padding:13px;font-size:15px;}
+}
+/* Smaller laptop windows and tablet layout */
+@media screen and (max-width: 999px){
+  #app{grid-template-columns:52px minmax(0,1fr) 340px;}
+  #main{min-width:0;}
+}
+@media screen and (max-width: 760px){
+  body{overflow:auto;}
+  #app{grid-template-columns:44px minmax(0,1fr);height:auto;min-height:calc(100vh - 50px);}
+  #sidenav{grid-column:1;grid-row:1 / span 2;}
+  #main{grid-column:2;grid-row:1;padding:10px;}
+  #cart-panel{grid-column:2;grid-row:2;min-height:420px;border-left:0;border-top:1px solid var(--border);}
+}
+
+/* 80 mm thermal receipt printing (Chrome / Edge on Windows) */
+@page{
+  size:80mm auto;
+  margin:3mm;
+}
 @media print{
+  html,body{
+    width:74mm!important;
+    min-width:74mm!important;
+    margin:0!important;
+    padding:0!important;
+    background:#fff!important;
+    color:#111!important;
+    overflow:visible!important;
+    -webkit-print-color-adjust:exact;
+    print-color-adjust:exact;
+  }
   body>*:not(#modal-overlay){display:none!important;}
-  #modal-overlay{position:static!important;background:none!important;display:block!important;}
-  #modal{box-shadow:none;max-height:none;overflow:visible;}
-  .modal-btns{display:none;}
+  #modal-overlay{
+    position:static!important;
+    inset:auto!important;
+    display:block!important;
+    width:74mm!important;
+    min-width:74mm!important;
+    height:auto!important;
+    background:#fff!important;
+    padding:0!important;
+    margin:0!important;
+  }
+  #modal{
+    display:block!important;
+    width:74mm!important;
+    max-width:74mm!important;
+    min-width:0!important;
+    margin:0!important;
+    padding:0!important;
+    border:0!important;
+    border-radius:0!important;
+    box-shadow:none!important;
+    max-height:none!important;
+    height:auto!important;
+    overflow:visible!important;
+    background:#fff!important;
+    color:#111!important;
+    font-family:Arial,sans-serif!important;
+  }
+  #modal h2{font-size:15px!important;line-height:1.25;margin:0 0 4px!important;}
+  .rcpt-addr{font-size:10px!important;line-height:1.35;margin-bottom:7px!important;color:#222!important;overflow-wrap:anywhere;}
+  .rcpt-divider{margin:6px 0!important;border:0!important;border-top:1px dashed #555!important;}
+  .rcpt-row{font-size:10px!important;line-height:1.35;margin-bottom:3px!important;gap:5px;}
+  .rcpt-row span:last-child{text-align:right;overflow-wrap:anywhere;}
+  .rcpt-row.bold{font-size:12px!important;font-weight:800!important;}
+  .rcpt-item{font-size:10px!important;line-height:1.35;padding:2px 0!important;gap:4px;}
+  .rcpt-item span:first-child{max-width:49mm;overflow-wrap:anywhere;}
+  .rcpt-item span:last-child{white-space:nowrap;text-align:right;}
+  .rcpt-footer{font-size:10px!important;color:#333!important;margin-top:8px!important;overflow-wrap:anywhere;}
+  .modal-btns{display:none!important;}
 }
 </style>
 </head>
@@ -472,7 +563,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
     <div id="rcpt-totals"></div>
     <div class="rcpt-footer" id="rcpt-footer">Thank you! Please visit again 🙏</div>
     <div class="modal-btns">
-      <button class="mbtn-print" onclick="printReceipt()">🖨 Print</button>
+      <button class="mbtn-print" onclick="printReceipt()" title="Print on the selected 80 mm thermal printer">🖨 Print</button>
       <button class="mbtn-wa" onclick="sendWhatsApp()">💬 WhatsApp</button>
       <button class="mbtn-save" onclick="closeModal(true)">✅ Save</button>
       <button class="mbtn-close" onclick="closeModal(false)">✖ Close</button>
